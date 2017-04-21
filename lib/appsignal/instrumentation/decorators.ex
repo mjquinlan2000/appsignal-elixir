@@ -43,12 +43,13 @@ defmodule Appsignal.Instrumentation.Decorators do
 
   @doc false
   def transaction(namespace, body, context) do
+    args = format_args(context)
     quote do
       transaction = Appsignal.Transaction.start(
         Appsignal.Transaction.generate_id,
         unquote(namespace)
       )
-      |> Appsignal.Transaction.set_action(unquote("#{context.module}##{context.name}"))
+      |> Appsignal.Transaction.set_action(unquote("#{context.module}##{context.name}#{args}"))
 
       result = unquote(body)
 
@@ -91,4 +92,14 @@ defmodule Appsignal.Instrumentation.Decorators do
     end
   end
 
+  defp format_args(%{args: nil}),
+    do: ""
+
+  defp format_args(%{args: args}) do
+    arg_str =
+      args
+      |> Stream.map(&Macro.to_string/1)
+      |> Enum.join(", ")
+    "(#{arg_str})"
+  end
 end

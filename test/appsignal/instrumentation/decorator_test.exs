@@ -62,7 +62,7 @@ defmodule Appsignal.Instrumentation.DecoratorsTest do
     result = Example.transaction_with_return_value(123)
     assert 246 == result
     assert called Transaction.start(:_, :http_request)
-    assert called Appsignal.Transaction.set_action(:_, "Elixir.Appsignal.Instrumentation.DecoratorsTest.Example#transaction_with_return_value")
+    assert called Appsignal.Transaction.set_action(:_, "Elixir.Appsignal.Instrumentation.DecoratorsTest.Example#transaction_with_return_value(x)")
     assert called Appsignal.Transaction.finish(:_)
     assert called Appsignal.Transaction.complete(:_)
   end
@@ -88,6 +88,27 @@ defmodule Appsignal.Instrumentation.DecoratorsTest do
     assert called Transaction.start_event(t)
     assert called Transaction.finish_event(t, "bar.http", "Elixir.Appsignal.Instrumentation.DecoratorsTest.Example2.bar", "", 0)
     assert called Transaction.finish_event(t, "nested.db", "Elixir.Appsignal.Instrumentation.DecoratorsTest.Example2.nested", "", 0)
+  end
+
+  defmodule Example3 do
+    use Appsignal.Instrumentation.Decorators
+
+    @decorate transaction()
+    def complex({:handle, msg}, [first | _rest] = _list),
+      do: [msg, first]
+
+    @decorate transaction()
+    def complex({:handle, msg}, []),
+      do: [msg]
+
+  end
+
+  test_with_mock "instrument transaction for two function heads", Appsignal.Transaction, [:passthrough], [] do
+    Example3.complex({:handle, "a test"}, ["one", "two", "three"])
+    assert called Appsignal.Transaction.set_action(:_, "Elixir.Appsignal.Instrumentation.DecoratorsTest.Example3#complex({:handle, msg}, [first | _rest] = _list)")
+
+    Example3.complex({:handle, "another test"}, [])
+    assert called Appsignal.Transaction.set_action(:_, "Elixir.Appsignal.Instrumentation.DecoratorsTest.Example3#complex({:handle, msg}, [])")
   end
 
 end
